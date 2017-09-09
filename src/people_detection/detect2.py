@@ -1,6 +1,7 @@
 import argparse
 import time
 import cv2
+import showProducts as sp
 
 
 def find_object_by_coords(_objects, coords, threshold):
@@ -47,10 +48,12 @@ if camera.isOpened():
     height = camera.get(4)
 
 # loop over the frames of the video
+frame_id = 0;
 while True:
     # grab the current frame and initialize the occupied/unoccupied
     # text
     (grabbed, frame) = camera.read()
+    frame_id += 1
 
     # if the frame could not be grabbed, then we have reached the end
     # of the video
@@ -93,31 +96,34 @@ while True:
         index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
         if index is None:
             if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
-                print("New object detected!")
+                #print("New object detected!")
                 objects.append([centerX, centerY])
-            else:
-                print("New object not allowed here, not creating", centerX, centerY, width, height)
+            #else:
+                #print("New object not allowed here, not creating", centerX, centerY, width, height)
         else:
             objects[index] = [centerX, centerY]
 
-    for obj in objects:
+    for obj_index, obj in enumerate(objects):
         cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
+        sp.storePosition(frame_id, obj_index, obj[0], obj[1])
         #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
     previousFrame = gray
 
+    sp.drawProducts(frame, sp.getProducts())
+
     # show the frame and record if the user presses a key
     cv2.imshow("Security Feed", frame)
-    cv2.imshow("Thresh", thresh)
-    cv2.imshow("Frame Delta", frameDelta)
-    key = cv2.waitKey(1) & 0xFF
+    #cv2.imshow("Thresh", thresh)
+    #cv2.imshow("Frame Delta", frameDelta)
+    key = cv2.waitKey(16) & 0xFF
 
     # if the `q` key is pressed, break from the loop
     if key == ord("q"):
         break
 
     # too fast, we should wait a bit
-    time.sleep(0.009)
+    #time.sleep(0.009)
 # cleanup the camera and close any open windows
 camera.release()
 cv2.destroyAllWindows()
