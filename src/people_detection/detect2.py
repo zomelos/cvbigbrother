@@ -17,13 +17,24 @@ def is_new_object_allowed_by_coords(width, height, coords):
         and (coords[1] < min_height or coords[1] > height - min_height)
 
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-v", "--video", help="path to the video file")
-ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
-ap.add_argument("-z", "--max-area", type=int, default=50000, help="maximum area size")
-ap.add_argument("-t", "--same-object-threshold", type=int, default=50, help="threshold for treating moves as same object")
-args = vars(ap.parse_args())
+def get_command_arguments():
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument("-v", "--video", help="path to the video file")
+    ap.add_argument("-a", "--min-area", type=int, default=500, help="minimum area size")
+    ap.add_argument("-z", "--max-area", type=int, default=50000, help="maximum area size")
+    ap.add_argument("-t", "--same-object-threshold", type=int, default=50, help="threshold for treating moves as same object")
+    return vars(ap.parse_args())
+
+
+def draw_objects(_objects):
+    for obj in _objects:
+        cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
+        cv2.putText(frame, "object {}".format(_objects.index(obj)), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (0, 0, 255))
+        #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
+
+
+args = get_command_arguments()
 
 # if the video argument is None, then we are reading from webcam
 if args.get("video", None) is None:
@@ -100,9 +111,7 @@ while True:
         else:
             objects[index] = [centerX, centerY]
 
-    for obj in objects:
-        cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
-        #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
+    draw_objects(objects)
 
     previousFrame = gray
 
