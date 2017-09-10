@@ -12,7 +12,7 @@ cur = myConnection.cursor()
 def getProducts():
     cur.execute("Select * from products")
     products = cur.fetchall()
-    return  products
+    return products
 
 
 def drawProducts(frame, productData):
