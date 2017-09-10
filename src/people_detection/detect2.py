@@ -71,7 +71,7 @@ def is_looking_at_item(visitor_objects):
 
 def display_product_visits(frame):
     row_x_pos = int(video_width - 160)
-    row_y_pos = 10
+    row_y_pos = 15
     cv2.putText(frame, "Product - Visits", (row_x_pos, row_y_pos), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.7, (255, 255, 255))
     #print(visits)
     for index, v in visits.items():
