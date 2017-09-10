@@ -3,6 +3,7 @@ import time
 import cv2
 import showProducts as sp
 import numpy as np
+import time
 
 
 def find_object_by_coords(_objects, coords, threshold):
@@ -43,12 +44,30 @@ def draw_objects(_objects):
         cv2.putText(frame, "object {} ({},{})".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
         #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
-def is_looking_at_item(visitor_obj):
-    print(productPositions, visitor_obj)
+def is_looking_at_item(visitor_objects):
+    #print(productPositions, visitor_objects)
 
     for product in productPositions:
-        (x1, y1, x2, y2, )
+        (productId, x1, y1, x2, y2, productName) = product
+        for visIndex,visitor in enumerate(visitor_objects):
+            (visitor_x, visitor_y, visitor_area, visitor_status) = visitor
+            unique = str(productId) + '-' + str(visIndex)
+            if visitor_x >= x1 and visitor_x <= x2 and visitor_y >= y1 and visitor_y <= y2:
+                #has previous entry
+                if unique in inside_of_product_zone:
+                    if time.time() - inside_of_product_zone[unique]['timestamp'] >= 3 and inside_of_product_zone[unique]['visit_counted'] == False:
+                        inside_of_product_zone[unique]['visit_counted'] = True
+                        visits[productId]['visits'] += 1
 
+                        #print(visits)
+                #does not have previous entry
+                else:
+                    inside_of_product_zone[unique] = {'timestamp': time.time(), 'visit_counted': False}
+
+            #outside of product zone
+            else:
+                if unique in inside_of_product_zone:
+                    del inside_of_product_zone[unique]
 
 args = get_command_arguments()
 
@@ -63,7 +82,12 @@ else:
 
 productPositions = sp.getProducts()
 
+visits = {}
+for product in productPositions:
+    visits[product[0]] = {'visits': 0, 'name': product[5]}
+
 inside_of_product_zone = {}
+
 
 # initialize the first frame in the video stream
 firstFrame = None
@@ -131,26 +155,26 @@ while True:
             index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
             if index is None:
                 if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
-                    print("New object detected!")
+                    #print("New object detected!")
                     objects.append([centerX, centerY, 0, True])
-                else:
-                    print("New object not allowed here, not creating", centerX, centerY, width, height)
+                #else:
+                    #print("New object not allowed here, not creating", centerX, centerY, width, height)
             else:
                 vector = get_object_vector(objects[index], [centerX, centerY])
                 objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
                 if centerX > width - 80 and centerY > height - 80:
                     if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
-                        print("deactivate object {}, v=({},{})".format(index, vector[0], vector[1]))
+                        #print("deactivate object {}, v=({},{})".format(index, vector[0], vector[1]))
                         objects[index][3] = False
                         nextDetectionFrame = frameCount + 30
-                    elif vector[0] < 0 and vector[1] < 0:
-                        print("object entering state control zone")
+                    #elif vector[0] < 0 and vector[1] < 0:
+                        #print("object entering state control zone")
 
     draw_objects(objects)
+    is_looking_at_item(objects)
     for obj_index, obj in enumerate(objects):
         #cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
         sp.storePosition(frame_id, obj_index, obj[0], obj[1])
-        is_looking_at_item(obj)
         #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
     previousFrame = gray
