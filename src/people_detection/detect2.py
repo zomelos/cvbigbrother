@@ -1,5 +1,4 @@
 import argparse
-import time
 import cv2
 import showProducts as sp
 import numpy as np
@@ -42,12 +41,9 @@ def draw_objects(_objects):
             continue
         cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
         cv2.putText(frame, "object {} ({},{})".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
-        #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
 
 def is_looking_at_item(visitor_objects):
-    #print(productPositions, visitor_objects)
-
     for product in productPositions:
         (productId, x1, y1, x2, y2, productName) = product
         for visIndex,visitor in enumerate(visitor_objects):
@@ -59,8 +55,6 @@ def is_looking_at_item(visitor_objects):
                     if time.time() - inside_of_product_zone[unique]['timestamp'] >= 3 and inside_of_product_zone[unique]['visit_counted'] == False:
                         inside_of_product_zone[unique]['visit_counted'] = True
                         visits[productId]['visits'] += 1
-
-                        #print(visits)
                 #does not have previous entry
                 else:
                     inside_of_product_zone[unique] = {'timestamp': time.time(), 'visit_counted': False}
@@ -74,15 +68,9 @@ def display_product_visits(frame):
     row_x_pos = int(video_width - 160)
     row_y_pos = 10
     cv2.putText(frame, "Product - Visits", (row_x_pos, row_y_pos), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.7, (255, 255, 255))
-    #print(visits)
     for index, v in visits.items():
         row_y_pos += 16
         cv2.putText(frame, str(v['name']) + ": " + str(v['visits']), (row_x_pos, row_y_pos), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.7, (255, 255, 255))
-
-        # cv2.putText(frame, "{} - {}".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15),
-    #             cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
-
-
 
 # convert frame to grayscale
 def frame_to_grayscale(_frame):
@@ -117,12 +105,12 @@ def detect_objects(_processed_frame):
         if frame_id >= nextDetectionFrame:
             index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
             if index is None:
-                if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
+                if is_new_object_allowed_by_coords(video_width, video_height, [centerX, centerY]):
                     objects.append([centerX, centerY, 0, True])
             else:
                 vector = get_object_vector(objects[index], [centerX, centerY])
                 objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
-                if centerX > width - 80 and centerY > height - 80:
+                if centerX > video_width - 80 and centerY > video_height - 80:
                     if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
                         objects[index][3] = False
                         nextDetectionFrame = frame_id + 30
@@ -193,9 +181,7 @@ while True:
     draw_objects(objects)
     is_looking_at_item(objects)
     for obj_index, obj in enumerate(objects):
-        #cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
         sp.storePosition(frame_id, obj_index, obj[0], obj[1])
-        #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
     previousFrame = gray
 
@@ -213,8 +199,6 @@ while True:
     if key == ord("q"):
         break
 
-    # too fast, we should wait a bit
-    #time.sleep(0.009)
 # cleanup the camera and close any open windows
 out.release()
 camera.release()
