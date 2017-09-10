@@ -66,6 +66,8 @@ nextDetectionFrame = 0
 if camera.isOpened():
     width = camera.get(3)
     height = camera.get(4)
+    fourcc = cv2.VideoWriter_fourcc('X', '2', '6', '4')
+    writer = cv2.VideoWriter("./output.mp4", fourcc, 60, (848, 480))
 
 # loop over the frames of the video
 while True:
@@ -133,7 +135,7 @@ while True:
     draw_objects(objects)
 
     previousFrame = gray
-
+    writer.write(frame)
     # show the frame and record if the user presses a key
     cv2.imshow("Security Feed", frame)
     cv2.imshow("Thresh", thresh)
@@ -148,4 +150,5 @@ while True:
     time.sleep(0.009)
 # cleanup the camera and close any open windows
 camera.release()
+writer.release()
 cv2.destroyAllWindows()
