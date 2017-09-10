@@ -69,6 +69,19 @@ def is_looking_at_item(visitor_objects):
                 if unique in inside_of_product_zone:
                     del inside_of_product_zone[unique]
 
+def display_product_visits(frame):
+    row_x_pos = int(video_width - 160)
+    row_y_pos = 10
+    cv2.putText(frame, "Product - Visits", (row_x_pos, row_y_pos), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.7, (255, 255, 255))
+    #print(visits)
+    for index, v in visits.items():
+        row_y_pos += 16
+        cv2.putText(frame, str(v['name']) + ": " + str(v['visits']), (row_x_pos, row_y_pos), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.7, (255, 255, 255))
+
+        # cv2.putText(frame, "{} - {}".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15),
+    #             cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
+
+
 args = get_command_arguments()
 
 # if the video argument is None, then we are reading from webcam
@@ -99,8 +112,8 @@ frameCount = 0
 nextDetectionFrame = 0
 
 if camera.isOpened():
-    width = camera.get(3)
-    height = camera.get(4)
+    video_width = camera.get(3)
+    video_height = camera.get(4)
 
 fourcc = cv2.VideoWriter_fourcc(*'XVID')
 out = cv2.VideoWriter('output.avi',fourcc, 60.0, (848,480))
@@ -154,15 +167,15 @@ while True:
         if frameCount >= nextDetectionFrame:
             index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
             if index is None:
-                if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
+                if is_new_object_allowed_by_coords(video_width, video_height, [centerX, centerY]):
                     #print("New object detected!")
                     objects.append([centerX, centerY, 0, True])
                 #else:
-                    #print("New object not allowed here, not creating", centerX, centerY, width, height)
+                    #print("New object not allowed here, not creating", centerX, centerY, video_width, video_height)
             else:
                 vector = get_object_vector(objects[index], [centerX, centerY])
                 objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
-                if centerX > width - 80 and centerY > height - 80:
+                if centerX > video_width - 80 and centerY > video_height - 80:
                     if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
                         #print("deactivate object {}, v=({},{})".format(index, vector[0], vector[1]))
                         objects[index][3] = False
@@ -180,6 +193,7 @@ while True:
     previousFrame = gray
 
     sp.drawProducts(frame, productPositions)
+    display_product_visits(frame)
 
     out.write(frame)
 
