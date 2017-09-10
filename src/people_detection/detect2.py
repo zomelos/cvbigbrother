@@ -44,6 +44,7 @@ def draw_objects(_objects):
         cv2.putText(frame, "object {} ({},{})".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
         #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
+
 def is_looking_at_item(visitor_objects):
     #print(productPositions, visitor_objects)
 
@@ -80,6 +81,51 @@ def display_product_visits(frame):
 
         # cv2.putText(frame, "{} - {}".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15),
     #             cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (255, 255, 0))
+
+
+
+# convert frame to grayscale
+def frame_to_grayscale(_frame):
+    _gray = cv2.cvtColor(_frame, cv2.COLOR_BGR2GRAY)
+    _gray = cv2.GaussianBlur(_gray, (11, 11), 0)
+    return _gray
+
+
+def process_frame_diff(_frame, _previousFrame, _firstFrame):
+    frameDelta1 = cv2.absdiff(_frame, _previousFrame)
+    frameDelta2 = cv2.absdiff(_previousFrame, _firstFrame)
+    frameDelta = cv2.bitwise_and(frameDelta1, frameDelta2)
+    thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_TRIANGLE)[1]
+
+    # dilate the thresholded image to fill in holes, then find contours
+    # on thresholded image
+    return cv2.dilate(thresh, None, iterations=4)
+
+
+def detect_objects(_processed_frame):
+    global nextDetectionFrame
+    (_, cnts, _) = cv2.findContours(_processed_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # loop over the contours
+    for c in cnts:
+        area = cv2.contourArea(c)
+        if area < args["min_area"] or area > args["max_area"]:
+            continue
+        (x, y, w, h) = cv2.boundingRect(c)
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        centerX = int((x + w / 2))
+        centerY = int((y + h / 2))
+        if frame_id >= nextDetectionFrame:
+            index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
+            if index is None:
+                if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
+                    objects.append([centerX, centerY, 0, True])
+            else:
+                vector = get_object_vector(objects[index], [centerX, centerY])
+                objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
+                if centerX > width - 80 and centerY > height - 80:
+                    if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
+                        objects[index][3] = False
+                        nextDetectionFrame = frame_id + 30
 
 
 args = get_command_arguments()
@@ -130,10 +176,8 @@ while True:
     # of the video
     if not grabbed:
         break
-    frameCount += 1
-    # convert to grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (11, 11), 0)
+
+    gray = frame_to_grayscale(frame)
 
     # if the first frame is None, initialize it
     if firstFrame is None:
@@ -142,46 +186,9 @@ while True:
     if previousFrame is None:
         previousFrame = gray
 
-    # compute the absolute difference between the current frame and
-    # first frame
-    frameDelta1 = cv2.absdiff(gray, previousFrame)
-    frameDelta2 = cv2.absdiff(previousFrame, firstFrame)
-    frameDelta = cv2.bitwise_and(frameDelta1, frameDelta2)
-    thresh = cv2.threshold(frameDelta, 25, 255, cv2.THRESH_TRIANGLE)[1]
+    thresh = process_frame_diff(gray, previousFrame, firstFrame)
 
-    # dilate the thresholded image to fill in holes, then find contours
-    # on thresholded image
-    thresh = cv2.dilate(thresh, None, iterations=4)
-
-    (_, cnts, _) = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    # loop over the contours
-    for c in cnts:
-        area = cv2.contourArea(c)
-        if area < args["min_area"] or area > args["max_area"]:
-            continue
-        (x, y, w, h) = cv2.boundingRect(c)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        centerX = int((x + w / 2))
-        centerY = int((y + h / 2))
-        if frameCount >= nextDetectionFrame:
-            index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
-            if index is None:
-                if is_new_object_allowed_by_coords(video_width, video_height, [centerX, centerY]):
-                    #print("New object detected!")
-                    objects.append([centerX, centerY, 0, True])
-                #else:
-                    #print("New object not allowed here, not creating", centerX, centerY, video_width, video_height)
-            else:
-                vector = get_object_vector(objects[index], [centerX, centerY])
-                objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
-                if centerX > video_width - 80 and centerY > video_height - 80:
-                    if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
-                        #print("deactivate object {}, v=({},{})".format(index, vector[0], vector[1]))
-                        objects[index][3] = False
-                        nextDetectionFrame = frameCount + 30
-                    #elif vector[0] < 0 and vector[1] < 0:
-                        #print("object entering state control zone")
+    detect_objects(thresh)
 
     draw_objects(objects)
     is_looking_at_item(objects)
@@ -200,9 +207,7 @@ while True:
     # show the frame and record if the user presses a key
     cv2.imshow("Security Feed", frame)
 
-    #cv2.imshow("Thresh", thresh)
-    #cv2.imshow("Frame Delta", frameDelta)
-    key = cv2.waitKey(16) & 0xFF
+    key = cv2.waitKey(10) & 0xFF
 
     # if the `q` key is pressed, break from the loop
     if key == ord("q"):
