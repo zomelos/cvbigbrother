@@ -1,13 +1,20 @@
 import argparse
 import time
 import cv2
+import numpy as np
 
 
 def find_object_by_coords(_objects, coords, threshold):
     for obj in _objects:
+        if not obj[3]:
+            continue
         if abs(obj[0] - coords[0]) < threshold and abs(obj[0] - coords[0]) < threshold:
             return _objects.index(obj)
     return None
+
+
+def get_object_vector(_object, coords):
+    return [coords[0] - _object[0], coords[1] - _object[1]]
 
 
 def is_new_object_allowed_by_coords(width, height, coords):
@@ -29,8 +36,10 @@ def get_command_arguments():
 
 def draw_objects(_objects):
     for obj in _objects:
+        if not obj[3]:
+            continue
         cv2.circle(frame, (obj[0], obj[1]), 10, (0, 255, 0), -1)
-        cv2.putText(frame, "object {}".format(_objects.index(obj)), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (0, 0, 255))
+        cv2.putText(frame, "object {} ({},{})".format(_objects.index(obj), obj[0], obj[1]), (obj[0] - 15, obj[1] - 15), cv2.FONT_HERSHEY_COMPLEX_SMALL, 0.5, (0, 0, 255))
         #print(frameCount, objects.index(obj), obj[0], obj[1], sep=";")
 
 
@@ -52,6 +61,7 @@ previousFrame = None
 objects = []
 
 frameCount = 0
+nextDetectionFrame = 0
 
 if camera.isOpened():
     width = camera.get(3)
@@ -101,15 +111,24 @@ while True:
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         centerX = int((x + w / 2))
         centerY = int((y + h / 2))
-        index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
-        if index is None:
-            if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
-                print("New object detected!")
-                objects.append([centerX, centerY])
+        if frameCount >= nextDetectionFrame:
+            index = find_object_by_coords(objects, [centerX, centerY], args["same_object_threshold"])
+            if index is None:
+                if is_new_object_allowed_by_coords(width, height, [centerX, centerY]):
+                    print("New object detected!")
+                    objects.append([centerX, centerY, 0, True])
+                else:
+                    print("New object not allowed here, not creating", centerX, centerY, width, height)
             else:
-                print("New object not allowed here, not creating", centerX, centerY, width, height)
-        else:
-            objects[index] = [centerX, centerY]
+                vector = get_object_vector(objects[index], [centerX, centerY])
+                objects[index] = [centerX, centerY, objects[index][2] + np.linalg.norm(vector), True]
+                if centerX > width - 80 and centerY > height - 80:
+                    if vector[0] > 0 and vector[1] > 0 and objects[index][2] > 200:
+                        print("deactivate object {}, v=({},{})".format(index, vector[0], vector[1]))
+                        objects[index][3] = False
+                        nextDetectionFrame = frameCount + 30
+                    elif vector[0] < 0 and vector[1] < 0:
+                        print("object entering state control zone")
 
     draw_objects(objects)
 
