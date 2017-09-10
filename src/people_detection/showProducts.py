@@ -28,7 +28,6 @@ def drawProducts(frame, productData):
 def storePosition(frame_id, object_id, x, y):
     sql = 'INSERT INTO `' + VISITOR_DATA_TABLE + '` (`frame_id`, `object_id`, `x_coordinate`, `y_coordinate`, `created`)'
     sql += ' VALUES (' + str(frame_id) + ', ' + str(object_id) + ', ' + str(x) + ', ' + str(y) + ', NOW());'
-    print(sql)
     cur.execute(sql)
     myConnection.commit()
 

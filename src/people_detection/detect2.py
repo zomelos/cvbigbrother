@@ -47,6 +47,9 @@ if camera.isOpened():
     width = camera.get(3)
     height = camera.get(4)
 
+fourcc = cv2.VideoWriter_fourcc(*'XVID')
+out = cv2.VideoWriter('output.avi',fourcc, 60.0, (848,480))
+
 # loop over the frames of the video
 frame_id = 0;
 while True:
@@ -112,8 +115,11 @@ while True:
 
     sp.drawProducts(frame, sp.getProducts())
 
+    out.write(frame)
+
     # show the frame and record if the user presses a key
     cv2.imshow("Security Feed", frame)
+
     #cv2.imshow("Thresh", thresh)
     #cv2.imshow("Frame Delta", frameDelta)
     key = cv2.waitKey(16) & 0xFF
@@ -125,5 +131,6 @@ while True:
     # too fast, we should wait a bit
     #time.sleep(0.009)
 # cleanup the camera and close any open windows
+out.release()
 camera.release()
 cv2.destroyAllWindows()
