@@ -191,7 +191,7 @@ while True:
     out.write(frame)
 
     # show the frame and record if the user presses a key
-    cv2.imshow("Security Feed", frame)
+    cv2.imshow("Big Brother", frame)
 
     key = cv2.waitKey(10) & 0xFF
 
